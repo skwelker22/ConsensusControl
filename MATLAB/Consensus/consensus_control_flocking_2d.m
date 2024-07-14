@@ -106,7 +106,7 @@ EDGE_q = zeros(nNodes,1);
 qiMinNorm = zeros(nNodes,nSamps);
 uAlpha = zeros(nDims,nNodes,nSamps);
 [fi_g_plt, fi_d_plt, fi_gamma_plt] = deal(zeros(nDims,nNodes,nSamps));
-xd_plot = zeros(nDims, nSamps);
+xd_plot = zeros(nDims, nSamps); E_q_bar = zeros(nSamps,1);
 %propagate the dynamics
 for tt = 1:nSamps
     %check current switch time to adjust the navigation point
@@ -230,6 +230,7 @@ for tt = 1:nSamps
     %calculate deviation energy to measure similarty to alpha-lattice
     EDGE_mag = sum(EDGE_q);
     E_q      = 1/(EDGE_mag + 1) * EDGE_q_outer;
+    E_q_bar(tt) = E_q/d_alpha^2;
     % E_q_del  = EDGE_mag/(EDGE_mag + 1) * (1e-1 * d_alpha)^2;
     E_q_del = (1e-1 * d_alpha)^2;
 
@@ -393,27 +394,33 @@ for tt = 1:nSamps
 
         figure('Name', 'Sigma vs. Time & Diff vs. Time');
         plot( ttPlot, zzSigPlt, 'k'); hold on;
-        plot( ttPlot, zzPlt, 'b');
+        plot( ttPlot, zzPlt(1,:), 'Color', uCCC(1,:));
+        plot( ttPlot, zzPlt(2,:), 'Color', uCCC(end,:));
         xlabel("Time [sec]"); ylabel("||x_i - x_j||_\sigma");
-
+        legend('||x_5 - x_{15}||_\sigma', 'x(1)_5 - x(1)_{15}', 'x(2)_5 - x(2)_{15}');
+        
         %alpha-flock verification plots
         connectivity = zeros(tt,1); cohesion = zeros(tt,1);
+        K_v_bar = zeros(tt,1);
         for nn = 1:tt
             %connectivity
             L_graph = diag(sum(AGraph(:,:,nn),2)) - AGraph(:,:,nn);
             connectivity(nn) = 1/(nNodes-1) * rank(L_graph);
             %cohesion
             cohesion(nn) = max(vecnorm(xi(:,:,nn)));
-            %normalized deviation energy
-            
+            %normalized velocity mismatch
+            K_v_bar(nn) = (0.5/nNodes) * sum(vecnorm(vi(:,:,nn)).^2);
         end
-
+        endLim = 1000;
         figure('Name', '\alpha-flock verification');
         subplot(221); plot( ttIx, connectivity, 'b'); ylabel("connectivity");
-        subplot(222); plot( ttIx, cohesion, 'b' ); ylabel("cohesion");
-        subplot(223);
-        subplot(224);
-        
+        xlim([0,endLim]); ylim([0,1]);
+        subplot(222); plot( ttIx, cohesion, 'b' ); ylabel("cohesion radius");
+        xlim([0,endLim]);
+        subplot(223); plot( ttIx, E_q_bar(ttIx), 'b'); ylabel("deviation energy");
+        xlim([0,endLim]);
+        subplot(224); plot( ttIx, K_v_bar, 'b'); ylabel("velocity mismatch");
+        xlim([0,endLim]);
     end
 
 end %end tt
