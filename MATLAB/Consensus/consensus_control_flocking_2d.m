@@ -20,20 +20,30 @@ r = 1.2 * d; %ball radius which defines the max distance for the proximity net
 d_prime = 0.6 * d; %constraint distance between agents and obstacles
 r_prime = 1.2 * d_prime; %ball radius defining an obstacle as a neigbor to an agent
 eps_parm = 0.1; %fixed epsilon used for sigma-norm calculations
-a = 5; %a parameter for potential function
-b = a; %b parameter for potential function
+% a = 45; %a parameter for potential function
+% b = a; %b parameter for potential function
+% b = 50;
+% a = 10; %working for 30 nodes
+% b = 20; %working for 30 nodes
+a = 5;
+b = 5;
 c = abs(a-b)/sqrt(4*a*b); % c parameter for potential function
 c1 = 1; c2 = 1; %c1,c2 for navigational feedback control term
 % distVar = 2500; %variance on the intial positions of the nodes
 % nNodes  = 150; %number of  agents in the networks
-distVar = 150;
-nNodes  = 20;
+distVar = 1500;
+% nNodes = 20;
+nNodes  = 30;
 nDims   = 2; %number of dimensions of the problem
 % s = rng("default"); %fix random seed
 s=rng(3);
 qi0 = sqrt(distVar)*randn(nDims,nNodes); %initial agent positions
-pRng = [-2,-1].^2; %range of initial agent velocities
-pi0 = randi(fliplr(pRng), nDims, nNodes); %initial velocity
+% pRng = [-2,-1].^2; %range of initial agent velocities
+pRngX = [-2,2]; pRngY = [-1,1];
+pi0X = randi(pRngX, 1, nNodes);
+pi0Y = randi(pRngY, 1, nNodes);
+pi0  = [pi0X; pi0Y];
+% pi0 = randi(fliplr(pRng), nDims, nNodes); %initial velocity
 pi_angle = atan2d(pi0(2,:), pi0(1,:)); %relative heading angle
 
 %calculate average position and velocity for relative frame
@@ -103,7 +113,7 @@ xd_star = xd(:,1);
 %define graph matrix to look at over time
 [AGraph,qjqi_norm] = deal(zeros(nNodes, nNodes, nSamps));
 EDGE_q = zeros(nNodes,1);
-qiMinNorm = zeros(nNodes,nSamps);
+qiMinNorm = zeros(nNodes,nSamps); qiMinNormNode = zeros(nNodes,nSamps);
 uAlpha = zeros(nDims,nNodes,nSamps);
 [fi_g_plt, fi_d_plt, fi_gamma_plt] = deal(zeros(nDims,nNodes,nSamps));
 xd_plot = zeros(nDims, nSamps); E_q_bar = zeros(nSamps,1);
@@ -125,6 +135,7 @@ for tt = 1:nSamps
     for ii = 1:nNodes
         %init min norm
         minJNorm = 9999;
+        minNode = nan;
 
         %check all neigbors for current node
         %Ni = {j el V : ||qj - qi||_sigma < r_sigma}
@@ -151,10 +162,12 @@ for tt = 1:nSamps
                     qiqj_norm = sigma_norm(xi(:,jj,tt) - xi(:,ii,tt), eps_parm);
                     if(qiqj_norm < minJNorm)
                         minJNorm = qiqj_norm;
+                        minNode = jj;
                     end
                 end
             end
             qiMinNorm(ii,tt) = minJNorm;
+            qiMinNormNode(ii,tt) = minNode;
             
             continue;
         end
@@ -172,6 +185,7 @@ for tt = 1:nSamps
             qiqj_norm = sigma_norm(xi(:,jj,tt) - xi(:,ii,tt), eps_parm);
             if(qiqj_norm < minJNorm)
                 minJNorm = qiqj_norm;
+                minNode = jj;
             end
             
             %velocity consensus term
@@ -190,7 +204,8 @@ for tt = 1:nSamps
         %keep track of the min norm for the closest agent to track the
         %structure of the alpha lattice
         qiMinNorm(ii,tt) = minJNorm;
-        
+        qiMinNormNode(ii,tt) = minNode;
+
         %create navigational feedback term
         fi_gamma = -c1 * (xi(:,ii,tt) - xd_star) - c2 * (vi(:,ii,tt) - vd);
         % fi_gamma = zeros(2,1);
@@ -273,10 +288,30 @@ for tt = 1:nSamps
         % drawnow;
         %min distance
         set(0, 'CurrentFigure', f3);
+        subplot(211);
         plot(qiMinNorm(:,tt), 'b'); 
-        yline(r, 'LineWidth',4);
-        yline(d_alpha, 'LineWidth', 4, 'Color', [0.49,0.18,0.56]);
-        ylim([0, 2*r]); legend('q_{ij, min}', 'r', 'd_\alpha');
+        yline(d_alpha, 'LineWidth', 4, 'Color', 'black');
+        ylim([0, 2*r]); ylabel('||q_j-q_i||');
+        legend('q_{ij, min}', 'd_\alpha');
+        subplot(212);
+        %create new vector with similar numbers
+        nodeMatchVec = zeros(nNodes,1);
+        nodeLoopLoop = [1:nNodes]; nodeSkip = [];
+        for NN = nodeLoopLoop
+            if (ismember(NN,nodeSkip))
+                continue;
+            end
+            if ((qiMinNormNode(qiMinNormNode(NN,tt),tt) == NN) && ...
+                    (qiMinNorm(NN,tt) < 1e-2))
+                tmpQI = qiMinNormNode(NN,tt);
+                nodeMatchVec(NN) = NN * 10;
+                nodeMatchVec(tmpQI) = NN * 10;
+                nodeSkip = [nodeSkip,tmpQI];
+            end
+        end
+        heatmap(diag(nodeMatchVec)); colormap([[1,1,1];jet]);
+        ylabel('Min Node'); xlabel('node  #');
+        title(['t=', num2str(tt*dT)]);
         drawnow;
     end
 
