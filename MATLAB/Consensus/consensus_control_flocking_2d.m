@@ -23,10 +23,10 @@ eps_parm = 0.1; %fixed epsilon used for sigma-norm calculations
 % a = 45; %a parameter for potential function
 % b = a; %b parameter for potential function
 % b = 50;
-a = 10; %working for 30 nodes
-b = 20; %working for 30 nodes
-% a = 5;
-% b = 5;
+% a = 10; %working for 30 nodes
+% b = 20; %working for 30 nodes
+a = 5;
+b = 5;
 c = abs(a-b)/sqrt(4*a*b); % c parameter for potential function
 c1 = 1; c2 = 1; %c1,c2 for navigational feedback control term
 % distVar = 2500; %variance on the intial positions of the nodes
