@@ -31,7 +31,7 @@ c = abs(a-b)/sqrt(4*a*b); % c parameter for potential function
 c1 = 1; c2 = 1; %c1,c2 for navigational feedback control term
 % distVar = 2500; %variance on the intial positions of the nodes
 % nNodes  = 150; %number of  agents in the networks
-distVar = 1500;
+distVar = 150;
 % nNodes = 20;
 nNodes  = 30;
 nDims   = 2; %number of dimensions of the problem
@@ -51,12 +51,14 @@ qc0 = mean(qi0, 2); pc0 = mean(pi0, 2);
 
 %define static gamma agent
 % qd = [[200; 30], [50;40]]; pd = [5;0];
-qd = [[0;0], [200;30]]; pd = [5;0];
+% qd = [[0;0], [200;30]]; pd = [5;0];
+qd = [[0;0], [-25;-25]]; pd = [5;0];
 
 %define switch times
 nSwitch = 10; switchIx = 1;
 % tNavSwitch = unique(randi([10,tFinal], nSwitch, 1));
-tNavSwitch = [50, 55];
+% tNavSwitch = [50, 55];
+tNavSwitch=15;
 
 %sigma norm
 % sigma_norm = @(z,e) (1/e)*(sqrt(1 + e*norm(z)^2) - 1);
@@ -69,7 +71,7 @@ r_alpha = sigma_norm(r, eps_parm);
 h_phiAlpha = 0.2;
 accumStep = 1e-3;
 zStep = 0.1; zVec = (0:zStep:25);
-[phi_alpha, xi_alpha] = deal(zeros(length(zVec),1));
+[xi_alpha,xi_alpha2]=deal(zeros(length(zVec),1));
 for ii = 1:length(zVec)
     z = zVec(ii);
     %integrate for xi
@@ -83,17 +85,21 @@ for ii = 1:length(zVec)
     tmp_xi_alpha = 0;
     for jj = 1:length(ss)
         s = ss(jj);
-        phi_alpha(jj) = bump(s/r_alpha,h_phiAlpha) * action_base(a,b,c,s-d_alpha);
-        tmp_xi_alpha = tmp_xi_alpha + phi_alpha(jj)*accumStep;
+        phi_alpha = bump(s/r_alpha,h_phiAlpha) * action_base(a,b,c,s-d_alpha);
+        tmp_xi_alpha = tmp_xi_alpha + phi_alpha*accumStep;
     end
     xi_alpha(ii) = sgn * tmp_xi_alpha;
+    % phi_alpha2=@(x)(sgn*bump(x/r_alpha,h_phiAlpha) * action_base(a,b,c,x-d_alpha));
+    % xi_alpha2(ii)=integral(phi_alpha2,ss(1),ss(end),'ArrayValued',true);
 end
 
 if(0)
     figure('Name', 'Smooth Pairwise Potential');
     plot( zVec, xi_alpha, 'b' ); hold on;
-    plot( zVec, -[diff(xi_alpha);inf]./zStep, 'r');
-    xlabel("z"); ylabel("\psi_a"); legend('V(z)', '-\nablaV(z)');
+    % plot( zVec, xi_alpha2, '--k');
+    % plot( zVec, -[diff(xi_alpha);inf]./zStep, 'r');
+    xlabel("z"); ylabel("\psi_a"); 
+    % legend('V(z)', '-\nablaV(z)');
     xlim([min(zVec), max(zVec)]);
 end
 
@@ -216,6 +222,9 @@ for tt = 1:nSamps
         fi_g_plt(:,ii,tt) = fi_g;
         fi_d_plt(:,ii,tt) = fi_d;
         fi_gamma_plt(:,ii,tt) = fi_gamma;
+
+        %enable quad dynamics
+        
         
         %two different implementations of the dynamics
         %rk4 integration and state space
@@ -292,7 +301,7 @@ for tt = 1:nSamps
         plot(qiMinNorm(:,tt), 'b'); 
         yline(d_alpha, 'LineWidth', 4, 'Color', 'black');
         ylim([0, 2*r]); ylabel('||q_j-q_i||');
-        legend('q_{ij, min}', 'd_\alpha');
+        legend('q_{ij, min}', 'd_\alpha', 'Location', 'southeast');
         subplot(212);
         %create new vector with similar numbers
         nodeMatchVec = zeros(nNodes,1);
