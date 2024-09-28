@@ -34,19 +34,21 @@ AGraph = [0, 1, 0, 1, 0, 0;
           0, 0, 1, 1, 0, 1;
           0, 0, 0, 1, 1, 0];
 
-%in degree
-DGraph = diag(sum(AGraph, 2));
-
-%graph laplacian
-LGraph = (DGraph - AGraph);
-LGraph_norm = DGraph^(-1)*LGraph;
 
 %get graph parameters
 nNodes = size(AGraph, 1); %M from paper
 nEdges = 7; %counting
 
-%create phi
+%in degree
+DGraph = diag(sum(AGraph, 2));
+
+%graph laplacian
 IM  = eye(nNodes);
+LGraph = (DGraph - AGraph);
+LGraph_norm = DGraph^(-1)*LGraph;
+LGraph_hat = kron(LGraph_norm, IM);
+
+%create phi
 PHI = kron(IM, (A + B*K)) - kron(LGraph_norm, (B*F));
 
 %get transfer function for the plant
