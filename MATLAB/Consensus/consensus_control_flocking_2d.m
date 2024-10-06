@@ -116,6 +116,18 @@ qc(:,1) = qc0; pc(:,1) = pc0;
 xd = qd - qc0; vd = pd - pc0;
 xd_star = xd(:,1);
 
+%calculate the inital structural energy
+%inital H(x0,v0)=V(x0) + c1 * J(x0) + K(v0)
+
+%inital moment of inertia and velocity mismatch
+Jx0=0; Kv0=0;
+for ii=1:nNodes
+    Jx0=Jx0+xi(:,ii,1)'*xi(:,ii,1);
+    Kv0=Kv0+vi(:,ii,1)'*vi(:,ii,1);
+end
+Jx0=0.5*c1*Jx0;
+Kv0=0.5*Kv0;
+
 %define graph matrix to look at over time
 [AGraph,qjqi_norm] = deal(zeros(nNodes, nNodes, nSamps));
 EDGE_q = zeros(nNodes,1);
