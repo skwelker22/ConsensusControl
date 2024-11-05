@@ -33,34 +33,41 @@ P=ss(A,B,C,D);
 %transfer function
 %Ps=Cp*(s*eye(nStates)-Ap)^(-1)*Bp + Dp;
 
-wn=10;wm=12;D1=tf([1 2*.1*wn wn^2],[1 2*.2*wm wm^2])*wm^2/wn^2;
-P=P*ss(D1);
-D2=ss(tf([-.05 1],[.05 1]));
-D=D1*D2;
-%P=P*D2
-BW=5;
-
-pid=pidqtune(BW/1.7,P,[],[1 1e-7 0]);C0=tf(pid(1,:),pid(2,:))
-
-[pid2,C1]=pidpmtune(BW*1.5,P,.01,50)
-%clf, 
-figure,
-bode(P*C0,P*C1)
-
-S=fbk(1,P*C0);T=fbk(P*C0,1);
+% wn=10;wm=12;
+% D1=tf([1 2*.1*wn wn^2],[1 2*.2*wm wm^2])*wm^2/wn^2;
+% P=P*ss(D1);
+% D2=ss(tf([-.05 1],[.05 1]));
+% D=D1*D2;
+% %P=P*D2
+% BW=5;
+% 
+% pid=pidqtune(BW/1.7,P,[],[1 1e-7 0]);C0=tf(pid(1,:),pid(2,:))
+% 
+% [pid2,C1]=pidpmtune(BW*1.5,P,.01,50)
+% %clf, 
+% figure,
+% bode(P*C0,P*C1)
+% 
+% S=fbk(1,P*C0);T=fbk(P*C0,1);
 
 %% LQG gains
-
-In = ss(tf(1,[1  0]));   Pa=P*In;  % int cascade at input
+% In = ss(tf(1,[1  0]));   Pa=P*In;  % int cascade at input
+Pa = P;
 a=Pa.a;b=Pa.b;c=Pa.c;d=Pa.d;
 
 L=-(lqr(a',c',1*eye(size(a))+1e12*b*b',1))'
 K=-(lqr(a,b,c'*c+a'*c'*c*a/900,2.e-1))
+CK=a+b*K;
 %clf
-S0=fbk(1,P*C0);
-SS3=ss(a+b*K,b,K,1);
-figure,bodemag(SS3,S0)
-%ppc gains 1
+% S0=fbk(1,P*C0);
+SS3=ss(a+b*K,b,K,1); TT3=1-SS3;
+ssTT3=tf(TT3);
+
+% figure,bodemag(SS3,S0)
+figure, bodemag(SS3,TT3);
+dT=1e-2; nSec=3; tVec=[0:dT:nSec-dT];
+figure, step(tVec,TT3);
+
 % Qc=ctrb(a,b); K=-([0 1]*inv(Qc)*(a+10*eye(2,2))*(a+10*eye(2,2)));
 % Qo=ctrb(a',c'); L=-([0 1]*inv(Qo)*(a'+10*eye(2,2))*(a'+10*eye(2,2)))';
 %ppc gains 2

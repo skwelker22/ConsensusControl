@@ -9,6 +9,9 @@ set(0, 'DefaultTextFontName', 'Arial', 'DefaultTextFontSize', 20, 'DefaultTextFo
 set(0, 'DefaultAxesFontName', 'Arial', 'DefaultAxesFontSize', 20, 'DefaultAxesFontWeight', 'Bold', 'DefaultAxesLineWidth', 1.5);
 set(0, 'DefaultLineLineWidth', 3, 'DefaultLineMarkerSize', 10);
 
+%add libraries for controller design
+addpath(genpath('C:\Users\skwel\sam\Research\ConsensusControl'));
+
 %% sim parms
 %sim update rate
 dT = 0.01;
@@ -20,9 +23,7 @@ r = 1.2 * d; %ball radius which defines the max distance for the proximity net
 d_prime = 0.6 * d; %constraint distance between agents and obstacles
 r_prime = 1.2 * d_prime; %ball radius defining an obstacle as a neigbor to an agent
 eps_parm = 0.1; %fixed epsilon used for sigma-norm calculations
-% a = 45; %a parameter for potential function
-% b = a; %b parameter for potential function
-% b = 50;
+h_phiAlpha = 0.2;
 a = 10; %working for 30 nodes
 b = 20; %working for 30 nodes
 % a = 5;
@@ -31,8 +32,8 @@ c = abs(a-b)/sqrt(4*a*b); % c parameter for potential function
 c1 = 1; c2 = 1; %c1,c2 for navigational feedback control term
 % distVar = 2500; %variance on the intial positions of the nodes
 % nNodes  = 150; %number of  agents in the networks
-distVar = 150;
-% nNodes = 20;
+distVar = 150; %this works
+% distVar = 2;
 nNodes  = 30;
 nDims   = 2; %number of dimensions of the problem
 % s = rng("default"); %fix random seed
@@ -68,7 +69,6 @@ d_alpha = sigma_norm(d, eps_parm);
 r_alpha = sigma_norm(r, eps_parm);
 
 %define phi_alpha(z);
-h_phiAlpha = 0.2;
 accumStep = 1e-3;
 zStep = 0.1; zVec = (0:zStep:25);
 [xi_alpha,xi_alpha2]=deal(zeros(length(zVec),1));
@@ -120,6 +120,7 @@ xd_star = xd(:,1);
 %inital H(x0,v0)=V(x0) + c1 * J(x0) + K(v0)
 
 %inital moment of inertia and velocity mismatch
+xi0=xi_alpha(zVec==0);
 Jx0=0; Kv0=0;
 for ii=1:nNodes
     Jx0=Jx0+xi(:,ii,1)'*xi(:,ii,1);
@@ -127,6 +128,40 @@ for ii=1:nNodes
 end
 Jx0=0.5*c1*Jx0;
 Kv0=0.5*Kv0;
+
+%get agent dyanmics
+truthDynamics=false;
+[AgentSS,~,nStates,nControls,nObs]=CreateQuadController(dT,nDims,truthDynamics,1);
+
+%define phi_alpha(z);
+accumStep = 1e-3;
+xi_alpha_x0=zeros(nNodes,(nNodes-1));
+allNodes=1:nNodes;
+for nn=1:nNodes
+    innerNodes=allNodes(nn~=allNodes);
+    for kk=innerNodes
+        %get current sig norm
+        sig=sigma_norm(xi(:,kk,1) - xi(:, nn, 1), eps_parm);
+        %integrate for xi
+        if(sig < d_alpha)
+            ss = sig:accumStep:d_alpha;
+            sgn = -1.0;
+        elseif sig >= d_alpha
+            ss = d_alpha:accumStep:sig;
+            sgn = 1.0;
+        end
+        tmp_xi_alpha = 0;
+        for jj = 1:length(ss)
+            s = ss(jj);
+            phi_alpha = bump(s/r_alpha,h_phiAlpha) * action_base(a,b,c,s-d_alpha);
+            tmp_xi_alpha = tmp_xi_alpha + phi_alpha*accumStep;
+        end
+        xi_alpha_x0(nn,kk) = sgn * tmp_xi_alpha;
+    end
+end
+Vx0=0.5*sum(sum(xi_alpha_x0));
+H0=Vx0+Jx0+Kv0;
+constraint0=H0-xi0;
 
 %define graph matrix to look at over time
 [AGraph,qjqi_norm] = deal(zeros(nNodes, nNodes, nSamps));
@@ -250,8 +285,11 @@ for tt = 1:nSamps
             xi(:,ii,tt+1) = rk4(xi(:,ii,tt), vi(:,ii,tt+1), dT);
 
         elseif (1) %state space
-            xi(:,ii,tt+1) = xi(:,ii,tt) + vi(:,ii,tt) * dT;
-            vi(:,ii,tt+1) = vi(:,ii,tt) + uAlpha(:,ii,tt) * dT;
+            xminus=[xi(:,ii,tt);vi(:,ii,tt)];
+            xplus=(AgentSS.A + eye(nStates))* xminus + AgentSS.B * uAlpha(:,ii,tt);
+            xi(:,ii,tt+1)=xplus(1:nDims); vi(:,ii,tt+1)=xplus(nDims+1:end);
+            % xi(:,ii,tt+1) = xi(:,ii,tt) + vi(:,ii,tt) * dT;
+            % vi(:,ii,tt+1) = vi(:,ii,tt) + uAlpha(:,ii,tt) * dT;
         end
 
         %increment outer deviation energy sum
