@@ -1,30 +1,26 @@
 function [Tquad_ss, Kquad,nStates,nControls,nObs]=...
-    CreateQuadController(dT,nDims,truthDynamics,plotFlag)
+                CreateQuadController(dT,nDims,truthDynamics,plotFlag)
 %dynamics : taken from Modeling, design and control of a 6-DOF quadcopter
 %fleet ... by Anshuman
-% g=9.81;
-g=1;
-switch nDims
-    case 2
-        nStates=4; nControls=2; nObs=2;
-    case 3
-        nStates=6; nControls=3; nObs=3;
-    otherwise
-        error(['controller for this case not implemented, ',...
-              'please enter 2 or 3 for nDims']);
-end
+g=9.81;
+%g=1;
 
-A=zeros(nStates); A(1:nDims,nDims+1:nStates)=dT*eye(nDims);
+%set helper variables to develop state space model
+nStates=2*nDims; nControls=nDims; nObs=nDims;
+
+%revisit these dynamics because they appear to be WRONG***
+A=eye(nStates); A(1:nDims,nDims+1:nStates)=dT*eye(nDims);
 B=zeros(nStates,nControls); 
 C=zeros(nObs,nStates); C(1:nDims,1:nDims)=eye(nDims);
 D=zeros(nObs,nControls);
+
 % set B matrix
 switch nDims
     case 2
-        % B(3,1)=-g*dT; B(4,2)=g*dT;
-        B(3,1)=g*dT; B(4,2)=g*dT;
+        B(3,1)=-g; B(4,2)=g;
+        %B(3,1)=g; B(4,2)=g;
     case 3
-        B(4,1)=-g*dT; B(5,2)=g*dT; B(6,3)=1.5015*dT;
+        B(4,1)=-g; B(5,2)=g; B(6,3)=1.5015;
     otherwise
         error(['controller for this case not implemented, ',...
               'please enter 2 or 3 for nDims']);
@@ -49,7 +45,7 @@ else
     if(plotFlag)
     figure('Name', 'T,S Bode');
     bodemag(Squad_ss,Tquad_ss);
-    dT=1e-2; nSec=3; tVec=[0:dT:nSec-dT];
+    nSec=50; tVec=[0:dT:nSec-dT];
     figure('Name','Closed Loop Comp Sens Step');
     step(tVec,Tquad_ss);
     end
