@@ -1,15 +1,15 @@
-function [Tquad_ss, Kquad,nStates,nControls,nObs]=...
+function [CLss, Kquad,nStates,nControls,nObs]=...
                 CreateQuadController(dT,nDims,truthDynamics,plotFlag)
 %dynamics : taken from Modeling, design and control of a 6-DOF quadcopter
 %fleet ... by Anshuman
 g=9.81;
-%g=1;
+% g=1;
 
 %set helper variables to develop state space model
 nStates=2*nDims; nControls=nDims; nObs=nDims;
 
-%revisit these dynamics because they appear to be WRONG***
-A=eye(nStates); A(1:nDims,nDims+1:nStates)=dT*eye(nDims);
+%state space
+A=zeros(nStates); A(1:nDims,nDims+1:nStates)=eye(nDims);
 B=zeros(nStates,nControls); 
 C=zeros(nObs,nStates); C(1:nDims,1:nDims)=eye(nDims);
 D=zeros(nObs,nControls);
@@ -18,7 +18,6 @@ D=zeros(nObs,nControls);
 switch nDims
     case 2
         B(3,1)=-g; B(4,2)=g;
-        %B(3,1)=g; B(4,2)=g;
     case 3
         B(4,1)=-g; B(5,2)=g; B(6,3)=1.5015;
     otherwise
@@ -32,22 +31,25 @@ Pquad=ss(A,B,C,D);
 %if truth dynamics enabled, just output constant velocity dynamics
 %with gravity induced B matrix
 if(truthDynamics)    
-    Tquad_ss=Pquad; Kquad=zeros(nControls,nStates);
+    CLss=Pquad; Kquad=zeros(nControls,nStates);
 else
-    %% controller design
-    muK=900; QK=2e-1;
-    Kquad=-lqr(A,B,C'*C+A'*C'*C*A/muK,QK);
+    %% position controller design
+    % muK=900; QK=2e-1;
+    QK=0.001;
+    % Kquad=-lqr(A,B,C'*C+A'*C'*C*A/muK,QK);
+    Kquad=-lqr(A,B,C'*C,QK);
 
     %closed loop sensistivity and comp sensitivity
-    Squad_ss=ss(A+B*Kquad,B,Kquad,ones(nObs,nControls)); Tquad_ss=1-Squad_ss;
+    kr=-inv(C*inv(A+B*Kquad)*B);
+    CLss=ss(A+B*Kquad, B*kr, C, zeros(1,1));
 
     %if make plots
     if(plotFlag)
-    figure('Name', 'T,S Bode');
-    bodemag(Squad_ss,Tquad_ss);
-    nSec=50; tVec=[0:dT:nSec-dT];
+    % figure('Name', 'T,S Bode');
+    % bodemag(CLss);
     figure('Name','Closed Loop Comp Sens Step');
-    step(tVec,Tquad_ss);
+    h=stepplot(CLss);
+    h.showCharacteristic('RiseTime');
     end
 end
 
