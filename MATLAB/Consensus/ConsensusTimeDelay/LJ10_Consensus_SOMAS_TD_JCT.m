@@ -22,7 +22,7 @@ A=[-k1/2, k1/2; k1/2, -k1/2];
 B=[0, 0; 2/k1, 0];
 
 %lmi variables
-tau=0.5; sdpvar gamma
+tau=0.4; sdpvar gamma
 
 %loop over all possible switching conditions
 nTop=4; [Qi_top, gamma_i_top, convergenceTop]=deal(cell(nTop,1));
@@ -83,8 +83,14 @@ for ss=1:nTop
         Hi_bar=blkdiag(kron(W_sig, eye(2)), W_sig, kron(W_sig,eye(2)));
 
         %form constraints
+        %note: the rank constraint isn't gaurunteed using the nuclear norm
+        % in order to actually enforce the rank constraint a non-convex
+        % solver should be used.
         Constraints=[(Hi_barT * PSI_SIG * Hi_bar)<=optTol, ...
                      Q_sigI>=optTol];
+                     %Q_sigI*ones(d_sig,1)<=optTol.*ones(d_sig,1)];
+                     %norm(Q_sigI,'nuclear')<=(d_sig-1), ...
+                     
 
         %objective
         Objective=[];
@@ -210,10 +216,12 @@ figure('Name', 'posx vs velx');
 for iAgent=1:nAgents
 plot(agents{iAgent}.stateHistory(1,:)-x0Avg(1),agents{iAgent}.stateHistory(3,:),'Color', cc(iAgent,:)); hold on;
 end
+xlabel('x'); ylabel('v_x');
 figure('Name', 'posy vs vely');
 for iAgent=1:nAgents
 plot(agents{iAgent}.stateHistory(1,:)-x0Avg(1),agents{iAgent}.stateHistory(3,:),'Color', cc(iAgent,:)); hold on;
 end
+xlabel('y'); ylabel('v_y');
 
 %function to get one of four graph topologies as described in the paper
 function [L_thetaBar,L_theta,d_sigI,nComponents]=GetGraphTopology(aij,iTop)
