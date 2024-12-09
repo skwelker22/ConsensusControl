@@ -22,7 +22,7 @@ A=[-k1/2, k1/2; k1/2, -k1/2];
 B=[0, 0; 2/k1, 0];
 
 %lmi variables
-tau=0.4; sdpvar gamma
+tau=5; sdpvar gamma
 
 %loop over all possible switching conditions
 nTop=4; [Qi_top, gamma_i_top, convergenceTop]=deal(cell(nTop,1));
@@ -122,6 +122,19 @@ useDelay=true;
 dT=1e-2; tSwitch=1e-1; nSec=60; nSamps=floor(nSec/dT); tVec=(0:dT:nSec);
 switchSequence=(1:4); ss=0;
 
+%plotting options
+plotDt=0.25;
+
+%setup video writer
+writeVideos=true; 
+POS_NAME=string(['consensusPosition_tau',num2str(tau),'.avi']); 
+VEL_NAME=string(['consensusVelocity_tau',num2str(tau),'.avi']); 
+if(writeVideos)
+VID_POS=VideoWriter(POS_NAME); open(VID_POS);
+VID_VEL=VideoWriter(VEL_NAME); open(VID_VEL);
+VIDEOS={writeVideos,VID_POS,VID_VEL};
+end
+
 %number of samples for tau
 tauSamps=floor(tau/dT);
 
@@ -187,9 +200,19 @@ if(1)
             agents{iAgent}.PropagateDynamics();
         end
 
+        %update animation at the downsampled rate
+        if(mod(tt*dT,plotDt)==0)
+            CreateConsensusAnimation(tt,tVec,agents,x0Avg,VIDEOS);
+        end
+
     end
 else
     error("unable to run consensus, lmi did not converge for some network configurations.");
+end
+
+%close videos
+if(writeVideos)
+close(VID_POS); close(VID_VEL);
 end
 
 %% plot position and velocity states
@@ -262,4 +285,44 @@ D_theta=diag(sum(A_theta,2));
 L_theta=(D_theta - A_theta);
 %calculate the permutated graph laplacian    
 L_thetaBar=E_sigma'*L_theta*E_sigma; 
+end
+
+%this method is to create an animation of the consensus law as the
+%agent trajectories converge over time
+function []=CreateConsensusAnimation(tt,tVec,agents,x0Avg,VIDEOS)
+cc=winter(6); nAgents=length(agents); 
+writeVideos=VIDEOS{1}; 
+if writeVideos, VID_POS=VIDEOS{2}; VID_VEL=VIDEOS{3}; end
+figure(111);
+for iAgent=1:nAgents
+subplot(211);
+plot(tVec(1:tt),agents{iAgent}.stateHistory(1,1:tt)-x0Avg(1),'Color', cc(iAgent,:)); hold on;
+subplot(212);
+plot(tVec(1:tt),agents{iAgent}.stateHistory(2,1:tt)-x0Avg(2),'Color', cc(iAgent,:)); hold on;
+end
+subplot(211); ylabel('p_x'); 
+xlim([0,tVec(end)]);
+subplot(212); ylabel('p_y'); xlabel("time [sec]");
+xlim([0,tVec(end)]);
+if(writeVideos)
+frame=getframe(gcf);
+writeVideo(VID_POS,frame);
+end
+% drawnow;
+figure(112);
+for iAgent=1:nAgents
+subplot(211);
+plot(tVec(1:tt),agents{iAgent}.stateHistory(3,1:tt),'Color', cc(iAgent,:)); hold on;
+subplot(212);
+plot(tVec(1:tt),agents{iAgent}.stateHistory(4,1:tt),'Color', cc(iAgent,:)); hold on;
+end
+subplot(211); ylabel('v_x'); 
+xlim([0,tVec(end)]);
+subplot(212); ylabel('v_y'); xlabel("time [sec]");
+xlim([0,tVec(end)]);
+if(writeVideos)
+frame=getframe(gcf);
+writeVideo(VID_VEL,frame);
+end
+drawnow;
 end

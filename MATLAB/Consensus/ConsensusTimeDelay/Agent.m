@@ -13,6 +13,7 @@ classdef Agent < handle
         position=0.0;
         velocity=0.0;
         dT=0.0;
+        positionAvg=zeros(2,1);
     end
     
     %dynamics should be private properties of the class,
@@ -32,7 +33,7 @@ classdef Agent < handle
             obj.nDims=nDims; obj.dT=dt;
             obj.states=x0; obj.stateHistory=x0;
             obj.position=x0(1:nDims); obj.velocity=x0(nDims+1:end);
-            
+
             %discretize state space w.r.t. dt, use zoh
             [obj.Ad, obj.Bd]=c2d(obj.Ac,obj.Bc,dt);
         end

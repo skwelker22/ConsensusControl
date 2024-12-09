@@ -24,6 +24,7 @@ B=[0, 0; 2/k1, 0];
 %lmi variables
 tau0=1e-3; tauF=2; tauStep=0.5e-1; nTauSamps=ceil((tauF-tau0)/tauStep);
 tauVec=linspace(tau0,tauF,nTauSamps); lenTau=length(tauVec);
+% tauVec=logspace(-3,1,nTauSamps); lenTau=length(tauVec);
 sdpvar gamma
 
 %loop over all possible switching conditions
@@ -132,15 +133,20 @@ top1=1:2; top2=3; top3=4; top4=5:6;
 convergenceFlag=zeros(nTop,lenTau);
 %parse convergence
 for ttau=1:lenTau
-    convergenceFlag(1,ttau)=sum(allTauConvergence{ttau}(top1));
-    convergenceFlag(2,ttau)=sum(allTauConvergence{ttau}(top2));
-    convergenceFlag(3,ttau)=sum(allTauConvergence{ttau}(top3));
-    convergenceFlag(4,ttau)=sum(allTauConvergence{ttau}(top4));
+    convergenceFlag(1,ttau)=sum(allTauConvergence{ttau}(top1))>0;
+    convergenceFlag(2,ttau)=sum(allTauConvergence{ttau}(top2))>0;
+    convergenceFlag(3,ttau)=sum(allTauConvergence{ttau}(top3))>0;
+    convergenceFlag(4,ttau)=sum(allTauConvergence{ttau}(top4))>0;
 end
 [XX,YY]=meshgrid((1:nTop),tauVec);
 figure('Name', 'Convergence');
+h=gca;
 surf(XX,YY,convergenceFlag'); colormap winter; view(2);
-ylabel("\tau [sec]"); xlabel("topology"); colorbar;
+ylabel("\tau [sec]"); xlabel("topology"); 
+colorbar('Ticks',[0,1], 'TickLabels', {'converged', 'unconverged'});
+ylim([tauVec(1),tauVec(end)]);
+set(h,'yscale','log');
+set(h, 'xtick', [1:nTop],'xticklabel',{'a','b','c','d'});
 
 %function to get one of four graph topologies as described in the paper
 function [L_thetaBar,L_theta,d_sigI,nComponents]=GetGraphTopology(aij,iTop)
