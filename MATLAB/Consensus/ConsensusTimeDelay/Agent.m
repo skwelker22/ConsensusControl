@@ -13,7 +13,6 @@ classdef Agent < handle
         position=0.0;
         velocity=0.0;
         dT=0.0;
-        positionAvg=zeros(2,1);
     end
     
     %dynamics should be private properties of the class,
